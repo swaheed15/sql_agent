@@ -1,3 +1,4 @@
+from click import prompt
 import streamlit as st
 from pathlib import Path
 from langchain_community.agent_toolkits.sql.base import create_sql_agent
@@ -82,8 +83,11 @@ agent = create_sql_agent(
     verbose=True,
     agent_type=AgentType.ZERO_SHOT_REACT_DESCRIPTION,
     max_iterations=3,
-    return_intermediate_steps=True
-)
+        return_intermediate_steps=True,
+        handle_parsing_errors=True,
+        agent_kwargs={"prefix": "You are a helpful assistant that can answer questions about the database."}
+    
+) 
 
 if "messages" not in st.session_state or st.sidebar.button("Clear chat", key="clear"):
     st.session_state.messages = [{"role": "system", "content": "You are a helpful assistant that can answer questions about the database."}]
@@ -103,55 +107,34 @@ if user_query:
     st.session_state.messages.append({"role": "user", "content": user_query})
 
     with st.chat_message("assistant"):
-        with st.spinner("Thinking..."):
-            try:
-                # Construct the prompt with structured output instructions
-                prompt = f"""
-                You are an AI assistant querying a database. Please follow these steps:
-                - List all relevant tables in the database.
-                - Provide the schema of the relevant tables.
-                - Execute the SQL query to get students with marks less than 50.
-                - Return the result as a **plain string**, with each student information separated by commas (No JSON required).
+        try:
+            # Execute the agent with the user's query
+            response = agent(
+                {"input": user_query}, 
+                callbacks=[StreamlitCallbackHandler(st.container())]
+            )
+        except ValueError as e:
+            st.error(f"An error occurred: {str(e)}")
+            st.stop()  # Stop execution if an error occurs
 
-                Example format:
-                Name: Jane Doe, Email: jane@example.com, Mark: 30
-                """
-
-                # Execute the agent (prompting Compound Beta model)
-                response = agent(
-                    {"input": prompt}, 
-                    callbacks=[StreamlitCallbackHandler(st.container())]
-                )
-
-                # Check if the response contains a valid final answer
-                if isinstance(response, str):
-                    # If the response is already a string, display it directly
-                    st.session_state.messages.append({"role": "assistant", "content": response})
-                    st.chat_message("assistant").markdown(response)
-
-                # Handle case if the response is a list or contains structured data
-                elif isinstance(response, list):
-                    formatted_response = ""
-                    for student in response:
-                        # Formatting each student's details as a string
-                        formatted_response += f"Name: {student['name']}, Email: {student['email']}, Mark: {student['mark']}\n"
+        # Check if the response contains a valid final answer
+        if isinstance(response, str):
+            st.session_state.messages.append({"role": "assistant", "content": response})
+            st.chat_message("assistant").markdown(response)
+        elif isinstance(response, list):
+            formatted_response = ""
+            for student in response:
+                # Formatting each student's details as a string
+                formatted_response += f"Name: {student['name']}, Email: {student['email']}, Mark: {student['mark']}\n"
                     
-                    # Display the formatted result
-                    st.session_state.messages.append({"role": "assistant", "content": formatted_response})
-                    st.chat_message("assistant").markdown(formatted_response)
-
-                else:
-                    # If the response is not in the expected format, handle the error
-                    st.error(f"Unexpected response format: {response}")
-
-            except Exception as e:
-                # Catch any parsing errors or other exceptions and display an error message
-                st.error(f"Error processing the query: {e}")
-
+            # Display the formatted result
+            st.session_state.messages.append({"role": "assistant", "content": formatted_response})
+            st.chat_message("assistant").markdown(formatted_response)
 else:
     # If no query is provided, display the last assistant message
     if 'messages' in st.session_state and len(st.session_state.messages) > 0:
         message = st.session_state.messages[-1]["content"]
         st.chat_message("assistant").markdown(message)
+
 
 
