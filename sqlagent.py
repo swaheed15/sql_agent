@@ -1,10 +1,10 @@
 import streamlit as st
 from pathlib import Path
-from langchain.agents import create_sql_agent
-from langchain.sql_database import SQLDatabase
+from langchain_community.agent_toolkits.sql.base import create_sql_agent
+from langchain_community.utilities import SQLDatabase
 from langchain.agents.agent_types import AgentType
-from langchain.callbacks import StreamlitCallbackHandler
-from langchain.agents.agent_toolkits import SQLDatabaseToolkit
+from langchain_community.callbacks.streamlit import StreamlitCallbackHandler
+from langchain_community.agent_toolkits.sql.toolkit import SQLDatabaseToolkit
 from sqlalchemy import create_engine
 import sqlite3
 from langchain_groq import ChatGroq
@@ -92,8 +92,6 @@ for message in st.session_state.messages:
     if message["role"] == "user":
         st.chat_message("user").markdown(message["content"])
 
-from langchain_core.messages import AIMessage
-from langchain_core.output_parsers import JsonOutputParser
 import json
 import streamlit as st
 
@@ -113,20 +111,10 @@ if user_query:
                 - List all relevant tables in the database.
                 - Provide the schema of the relevant tables.
                 - Execute the SQL query to get students with marks less than 50.
-                - Return the result as a **valid JSON object** inside a markdown code block.
+                - Return the result as a **plain string**, with each student information separated by commas (No JSON required).
 
                 Example format:
-                ```json
-                [
-                    {"name": "Jane Doe", "email": "jane@example.com", "mark": 30},
-                    {"name": "John Doe", "email": "john@example.com", "mark": 40}
-                ]
-                ```
-
-                Ensure that:
-                - The JSON is **valid** (i.e., keys are quoted with double quotes).
-                - The output is **fenced by three backticks** for markdown.
-                - **Do not include extra text** outside of the JSON format.
+                Name: Jane Doe, Email: jane@example.com, Mark: 30
                 """
 
                 # Execute the agent (prompting Compound Beta model)
@@ -135,20 +123,29 @@ if user_query:
                     callbacks=[StreamlitCallbackHandler(st.container())]
                 )
 
-                # Parse the response using JsonOutputParser if the output is in JSON markdown format
-                message = AIMessage(content=response)  # Simulating model's response
-                output_parser = JsonOutputParser()
+                # Check if the response contains a valid final answer
+                if isinstance(response, str):
+                    # If the response is already a string, display it directly
+                    st.session_state.messages.append({"role": "assistant", "content": response})
+                    st.chat_message("assistant").markdown(response)
 
-                # Try parsing the response using the JsonOutputParser
-                try:
-                    parsed_response = output_parser.invoke(message)
-                    st.session_state.messages.append({"role": "assistant", "content": parsed_response})
-                    st.chat_message("assistant").markdown(parsed_response)
-                except Exception as e:
-                    st.error(f"Error processing the JSON response: {e}")
+                # Handle case if the response is a list or contains structured data
+                elif isinstance(response, list):
+                    formatted_response = ""
+                    for student in response:
+                        # Formatting each student's details as a string
+                        formatted_response += f"Name: {student['name']}, Email: {student['email']}, Mark: {student['mark']}\n"
+                    
+                    # Display the formatted result
+                    st.session_state.messages.append({"role": "assistant", "content": formatted_response})
+                    st.chat_message("assistant").markdown(formatted_response)
+
+                else:
+                    # If the response is not in the expected format, handle the error
+                    st.error(f"Unexpected response format: {response}")
 
             except Exception as e:
-                # Catch any errors during processing and show an error message
+                # Catch any parsing errors or other exceptions and display an error message
                 st.error(f"Error processing the query: {e}")
 
 else:
@@ -156,3 +153,5 @@ else:
     if 'messages' in st.session_state and len(st.session_state.messages) > 0:
         message = st.session_state.messages[-1]["content"]
         st.chat_message("assistant").markdown(message)
+
+
