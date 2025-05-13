@@ -40,7 +40,7 @@ if not api_key:
 ##LLM model
 llm = ChatGroq(
     groq_api_key=api_key,
-    model="compound-beta",
+    model="gemma2-9b-it",
     temperature=0,
     streaming=True
 )
