@@ -8,10 +8,10 @@ from langchain_community.agent_toolkits.sql.toolkit import SQLDatabaseToolkit
 from sqlalchemy import create_engine
 import sqlite3
 from langchain_groq import ChatGroq
-from langchain.prompts import PromptTemplate
-from langchain.prompts import MessagesPlaceholder
-from langchain.prompts import HumanMessagePromptTemplate
-from langchain.prompts import SystemMessagePromptTemplate
+from langchain. prompts import PromptTemplate
+from langchain. prompts import MessagesPlaceholder
+from langchain. prompts import HumanMessagePromptTemplate
+from langchain. prompts import SystemMessagePromptTemplate
 
 
 st.set_page_config(page_title="SQL Agent", page_icon="🔍", layout="centered")  
@@ -20,7 +20,7 @@ st.title("🔍 SQL Agent")
 LOCALDB = "USE_LOCALDB"
 MYSQL = "USE_MYSQL"
 
-radio_opt = ["use sqlite3 database _ Student.db", "Connect to MySQL database"]
+radio_opt = ["UseSQLite3database _ Student.db", "ConnecttoMySQLdatabase"]
 
 selected_opt=st.sidebar.radio(label="Select the DB to Chat", options=radio_opt)
 
@@ -84,11 +84,10 @@ agent = create_sql_agent(
     max_iterations=3,
         return_intermediate_steps=True,
         output_parsing_error=True,
-        agent_kwargs={"prefix": "You are a helpful assistant that can answer questions about the database."}
-    
+        agent_kwargs {"prefix": "You are a helpful assistant that can answer questions about the database."}     
 ) 
 
-if "messages" not in st.session_state or st.sidebar.button("Clear chat", key="clear"):
+if "messages" not in st.session_state or st. sidebar.button("Clear chat", key="clear"):
     st.session_state.messages = [{"role": "system", "content": "You are a helpful assistant that can answer questions about the database."}]
 
 for message in st.session_state.messages:
