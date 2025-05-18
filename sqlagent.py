@@ -83,7 +83,7 @@ agent = create_sql_agent(
     agent_type=AgentType.ZERO_SHOT_REACT_DESCRIPTION,
     max_iterations=3,
         return_intermediate_steps=True,
-        handle_parsing_errors=True,
+        output_parsing_error=True,
         agent_kwargs={"prefix": "You are a helpful assistant that can answer questions about the database."}
     
 ) 
